@@ -2,6 +2,7 @@
 
 import os
 import re
+import subprocess
 import sys
 import textwrap
 
@@ -131,6 +132,15 @@ def print_account(account):
     print_out("")
     print_out(account['url'])
 
+    if account['fields']:
+        fields = account['fields']
+        if len(fields) > 0:
+            for field in fields:
+                if field['name'] and field['value']:
+                    name = field['name']
+                    value = field['value']
+                    print_out("")
+                    print_out("{}: {}".format(name, value))
 
 HASHTAG_PATTERN = re.compile(r'(?<!\w)(#\w+)\b')
 
@@ -163,7 +173,7 @@ def print_search_results(results):
         print_out("<yellow>Nothing found</yellow>")
 
 
-def print_status(status, width):
+def print_status(status, width, me=None):
     reblog = status['reblog']
     content = reblog['content'] if reblog else status['content']
     media_attachments = reblog['media_attachments'] if reblog else status['media_attachments']
@@ -186,6 +196,34 @@ def print_status(status, width):
         "<yellow>{}</yellow>".format(time),
     ))
 
+    if me:
+        parts = content[3:-4].split(' ')
+        if len(parts) == 2:
+            dest = parts[0]
+            rest = parts[1]
+            slide_parts = rest.split(':')
+            if len(slide_parts) == 2:
+                first = slide_parts[0]
+                encrypted = slide_parts[1]
+
+                if first == 'slide':
+                    if me['fields']:
+                        fields = me['fields']
+                        if len(fields) > 0:
+                            destKeyString = None
+                            for field in fields:
+                                if field['name'] and field['value']:
+                                    if field['name'] == 'P256 public key':
+                                        destKeyString = field['value']
+
+                            if destKeyString:
+                                process = subprocess.run(["./slider", "decrypt", destKeyString, encrypted],
+                                                         capture_output=True, text=True)
+                                decrypted = process.stdout.strip()
+
+                                decrypted_post = "<p>[Encrypted with Slide] {} {}</p>".format(dest, decrypted)
+                                content = decrypted_post
+
     for paragraph in parse_html(content):
         print_out("")
         for line in paragraph:
@@ -206,10 +244,10 @@ def print_status(status, width):
     ))
 
 
-def print_timeline(items, width=100):
+def print_timeline(items, width=100, me=None):
     print_out("─" * width)
     for item in items:
-        print_status(item, width)
+        print_status(item, width, me)
         print_out("─" * width)
 
 

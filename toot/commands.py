@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import subprocess
 
 from toot import api, config
 from toot.auth import login_interactive, login_browser_interactive, create_app_interactive
@@ -8,7 +9,6 @@ from toot.exceptions import ApiError, ConsoleError, NotFoundError
 from toot.output import (print_out, print_instance, print_account, print_acct_list,
                          print_search_results, print_timeline, print_notifications)
 from toot.utils import assert_domain_exists, editor_input, multiline_input, EOF_KEY
-
 
 def get_timeline_generator(app, user, args):
     # Make sure tag, list and public are not used simultaneously
@@ -50,7 +50,9 @@ def timeline(app, user, args):
         if args.reverse:
             items = reversed(items)
 
-        print_timeline(items)
+        me = _find_account(app, user, user.username)
+
+        print_timeline(items, me=me)
 
         if args.once or not sys.stdout.isatty():
             break
@@ -110,6 +112,39 @@ def post(app, user, args):
 
     if not args.text:
         raise ConsoleError("You must specify either text or media to post.")
+
+    if args.visibility == 'encrypted':
+        args.visibility = 'direct'
+
+        parts = args.text.split(' ', 1)
+        dest = parts[0]
+        rest = parts[1]
+        account = _find_account(app, user, dest)
+        if not account:
+            print('Could not find account {}'.format(dest))
+            return
+
+        if not account['fields']:
+            return
+
+        fields = account['fields']
+        if len(fields) == 0:
+            return
+
+        destKeyString = None
+        for field in fields:
+            if field['name'] and field['value']:
+                if field['name'] == 'P256 public key':
+                    destKeyString = field['value']
+
+        if not destKeyString:
+            return
+
+        process = subprocess.run(["./slider", "encrypt", destKeyString, rest], capture_output=True, text=True)
+        encrypted = process.stdout.strip()
+
+        encrypted_post = "{} slide:{}".format(dest, encrypted)
+        args.text = encrypted_post
 
     response = api.post_status(
         app, user, args.text,

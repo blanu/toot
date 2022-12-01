@@ -11,7 +11,7 @@ from toot import config, commands, CLIENT_NAME, CLIENT_WEBSITE, __version__
 from toot.exceptions import ApiError, ConsoleError
 from toot.output import print_out, print_err
 
-VISIBILITY_CHOICES = ['public', 'unlisted', 'private', 'direct']
+VISIBILITY_CHOICES = ['public', 'unlisted', 'private', 'direct', "encrypted"]
 
 
 def language(value):
