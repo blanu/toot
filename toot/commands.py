@@ -134,7 +134,7 @@ def post(app, user, args):
         destKeyString = None
         for field in fields:
             if field['name'] and field['value']:
-                if field['name'] == 'P256 public key':
+                if field['name'] == 'P-256 public key':
                     destKeyString = field['value']
 
         if not destKeyString:
