@@ -29,6 +29,7 @@ class Timeline(urwid.Columns):
         "links",      # Show status links
         "thread",     # Show thread for status
         "save",       # Save current timeline
+        "zoom",       # Open status in scrollable popup window
     ]
 
     def __init__(self, name, statuses, focus=0, is_thread=False):
@@ -173,6 +174,10 @@ class Timeline(urwid.Columns):
             self._emit("save", status)
             return
 
+        if key in ("z", "Z"):
+            self._emit("zoom", self.status_details)
+            return
+
         return super().keypress(size, key)
 
     def append_status(self, status):
@@ -305,6 +310,7 @@ class StatusDetails(urwid.Pile):
             "[L]inks",
             "[R]eply",
             "So[u]rce",
+            "[Z]oom",
             "[H]elp",
         ]
         options = " ".join(o for o in options if o)
@@ -328,10 +334,16 @@ class StatusDetails(urwid.Pile):
         yield urwid.Text(("link", card["url"]))
 
     def poll_generator(self, poll):
-        for option in poll["options"]:
+        for idx, option in enumerate(poll["options"]):
             perc = (round(100 * option["votes_count"] / poll["votes_count"])
                 if poll["votes_count"] else 0)
-            yield urwid.Text(option["title"])
+
+            if poll["voted"] and poll["own_votes"] and idx in poll["own_votes"]:
+                voted_for = " ✓"
+            else:
+                voted_for = ""
+
+            yield urwid.Text(option["title"] + voted_for)
             yield urwid.ProgressBar("", "poll_bar", perc)
 
         status = "Poll · {} votes".format(poll["votes_count"])
